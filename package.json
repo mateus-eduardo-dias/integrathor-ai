@@ -10,6 +10,11 @@
     "start": "node ."
   },
   "dependencies": {
+    "groq-sdk": "^1.2.0",
+    "inquirer": "^14.0.0",
     "ollama": "^0.6.3"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2"
   }
 }

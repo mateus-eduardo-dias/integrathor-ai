@@ -1,56 +1,66 @@
-import { Ollama } from "ollama"
-import readline from 'readline/promises'
+import Groq from "groq-sdk"
+import dotenv from 'dotenv'
+import inquirer from "inquirer"
+dotenv.config()
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-})
+const groq = new Groq({apiKey: process.env.GROQ_KEY})
 
-console.log(process.argv)
+let config
+try {
+    config = await inquirer.prompt([
+        {
+            type: "rawlist",
+            name: "model",
+            message: "Choose a model:",
+            choices: ["qwen/qwen3-32b", "openai/gpt-oss-20b"],
+            default: "qwen/qwen3-32b"
+        }
+    ])
+} catch (err) {
+    if (err.name == "ExitPromptError") {
+        console.log(`${err.name}: Quitting...`)
+        process.exit(0)
+    } else {
+        throw err
+    }
+}
 
-const model = await rl.question('Model: ')
-const think = await rl.question('Thinking? y/n [y]: ')
-const ollama = new Ollama()
+console.log(`Welcome to your terminal, talking with: ${config.model}`)
 
 do {
-    const text = await rl.question('> ')
-
-    if (text == '/quit') {
-        break;
-    }
-
-    let response
     try {
-        response = await ollama.chat({
-            model,
-            messages: [{role: 'user', content: text}],
-            think: think.toUpperCase() == 'Y',
-            stream: false,
-        })
+        const prompt = await inquirer.prompt([{type: 'input', name: 'content', message: '> '}])
+        if (prompt.content.charAt(0) == '/') {
+            runSlashCommand(prompt.content)
+        } else {
+            await runAI(prompt.content)
+        }
     } catch (err) {
-        console.error(`ERROR: ${err.status_code}`)
-        console.log(err.error)
-        process.exit(1)
-    }
-
-    /*
-    if (process.argv[2] == '-d') {
-        for await (const part of response) {
-            console.log(part.message)
+        if (err.name == "ExitPromptError") {
+            console.log(`${err.name}: Quitting...`)
+            process.exit(0)
+        } else {
+            throw err
         }
-    } else {
-        for await (const part of response) {
-            process.stdout.write(part.message.content)
-        }
-        process.stdout.write(Buffer.from(String.fromCharCode(10)))
-    }
-    */
-    if (process.argv[2] == '-d') {
-        console.warn("-- ANSWERING IN DEBUG MODE --")
-        console.log(response.message)
-    } else {
-        console.log(response.message.content)
     }
 } while (true)
 
-process.exit(0)
+async function runAI(prompt) {
+    const chat = await groq.chat.completions.create({
+        messages: [
+            { role: "user", content: prompt }
+        ],
+        model: "openai/gpt-oss-20b"
+    })
+    console.log(chat.choices[0]?.message?.content || "")
+}
+
+function runSlashCommand(prompt) {
+    if (prompt == '/quit') {
+        console.log("Quitting...")
+        process.exit(0)
+    } else {
+        console.error("ERROR: Command not found")
+    }
+}
+
