@@ -13,6 +13,13 @@ const custom_vars = {
 console.log()
 DEBUG_MODE ? console.warn("WARNING: Debug Mode is active.") : console.log("Welcome to your terminal")
 
+const modelChoices = [
+    "openai/gpt-oss-120b", "openai/gpt-oss-20b", new inquirer.Separator(),
+    "llama-3.3-70b-versatile", "llama-3.1-8b-instant", new inquirer.Separator(),
+    "qwen/qwen3-32b", new inquirer.Separator(), 
+    "meta-llama/llama-4-scout-17b-16e-instruct", new inquirer.Separator(),
+    "groq/compound", "groq/compound-mini",
+]
 
 let config
 try {
@@ -21,7 +28,7 @@ try {
             type: "rawlist",
             name: "model",
             message: "Choose a model:",
-            choices: ["qwen/qwen3-32b", "openai/gpt-oss-20b"],
+            choices: modelChoices,
             default: "qwen/qwen3-32b"
         }
     ])
