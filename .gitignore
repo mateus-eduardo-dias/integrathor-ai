@@ -4,3 +4,6 @@ node_modules
 rss_test.js
 test.js
 .seen-hashes.json
+test-uncompressed.json
+test-compressed.json
+test-compressedB.json

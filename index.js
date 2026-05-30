@@ -1,6 +1,7 @@
 import Groq from "groq-sdk"
 import dotenv from 'dotenv'
 import inquirer from "inquirer"
+import tools from "./tools.js"
 dotenv.config()
 
 const groq = new Groq({apiKey: process.env.GROQ_KEY})
@@ -29,7 +30,7 @@ try {
             name: "model",
             message: "Choose a model:",
             choices: modelChoices,
-            default: "qwen/qwen3-32b"
+            default: "openai/gpt-oss-120b"
         }
     ])
 } catch (err) {
@@ -41,36 +42,10 @@ try {
     }
 }
 
-const tools = [
-    {
-        type: 'function',
-        function: {
-            name: 'get_temperature',
-            description: 'Get the temperature of a certain city',
-            parameters: {
-                type: 'object',
-                properties: {
-                    city: {
-                        type: 'string',
-                        description: 'City name'
-                    },
-                },
-                required: ['city']
-            }
-        }
-    }
-]
-
-const tools_fn = {
-    get_temperature: (args) => {
-        let parsed_args = JSON.parse(args)
-        return JSON.stringify({city: parsed_args.city, temperature: 22, unit: 'Celsius'})
-    }
-}
-
 console.log(`Talking with: ${config.model}`)
 
 const messages_ctx = []
+const system_ctx = [{role: 'system', content: 'You are a helpfull assistant. If the response requires more than one tool call, send all of them in one request.'}]
 
 do {
     try {
@@ -91,21 +66,31 @@ do {
     }
 } while (true)
 
-async function runAI(prompt, ctx_tools=[]) {
-    let messages = [...messages_ctx, { role: "user", content: prompt }, ...ctx_tools]
+async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
     const isToolCall = ctx_tools.length > 0
+    let messages = isToolCall ? [...system_ctx, ...messages_ctx, ...ctx_tools] : [...system_ctx, ...messages_ctx, { role: "user", content: prompt }, ...ctx_tools]
     const chat = await groq.chat.completions.create({
         messages,
         model: "openai/gpt-oss-20b",
-        tools
+        tools: tools.config,
+        tool_choice: 'auto',
+        parallel_tool_calls: true
     })
 
     const requiresToolCall = chat.choices[0]?.message?.tool_calls != null
 
     if (!isToolCall) {
         messages_ctx.push({role: "user", content: prompt})
-    } else {
+    } else if (save_ctx_tools) {
         messages_ctx.push(...ctx_tools)
+        ctx_tools.length = 0
+    }
+
+    if (!save_ctx_tools && !requiresToolCall) {
+        while (messages_ctx[messages_ctx.length - 1].role != 'user') {
+            messages_ctx.pop()
+        }
+        messages_ctx.pop()
     }
 
     if (DEBUG_MODE) {
@@ -118,14 +103,19 @@ async function runAI(prompt, ctx_tools=[]) {
         console.log(chat.choices[0]?.message?.content || "")
         messages_ctx.push({role: "assistant", content: chat.choices[0].message.content})
     } else {
-        messages_ctx.push({role: 'assistant', content: '', tool_calls: chat.choices[0].message.tool_calls})
+        ctx_tools.push({role: 'assistant', content: '', tool_calls: chat.choices[0].message.tool_calls})
+        let saveCalls = true
         for (let call of chat.choices[0]?.message?.tool_calls) {
             console.log(`Running: ${call.function.name}`)
-            const returnValue = tools_fn[call.function.name](call.function.arguments)
+            if (!tools.hasContext[call.function.name]) {
+                saveCalls = false
+            }
+            const returnValue = await tools.functions[call.function.name](call.function.arguments)
             const tool_message = {role: 'tool', content: returnValue, tool_call_id: call.id}
             ctx_tools.push(tool_message)
         }
-        await runAI(prompt, ctx_tools)
+
+        await runAI(prompt, ctx_tools, saveCalls)
     }
 }
 
