@@ -7,6 +7,7 @@ dotenv.config()
 const groq = new Groq({apiKey: process.env.GROQ_KEY})
 const DEBUG_MODE = process.argv.includes('-d') || process.env.NODE_ENVIRONMENT == 'development'
 
+// Todo
 const custom_vars = {
     MAX_CTX: parseInt(process.env.MAX_CTX) || 4096
 }
@@ -120,7 +121,13 @@ async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
 }
 
 function runSlashCommand(prompt) {
-    if (prompt == '/quit') {
+    if (prompt == '/help') {
+        console.log("Commands:")
+        console.log('/quit         ----- Exit the terminal')
+        console.log('/clear        ----- Clear the context window')
+        console.log('/context      ----- Show the context window')
+        console.log('/context size ----- Show the estimated size of the context window (tokens)')
+    } else if (prompt == '/quit') {
         console.log("Quitting...")
         process.exit(0)
     } else if (prompt == '/clear') {

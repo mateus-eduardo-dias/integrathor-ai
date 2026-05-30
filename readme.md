@@ -14,7 +14,7 @@ git clone https://github.com/mateus-eduardo-dias/integrathor-ai.git
 npm install
 ```
 
-3. Create a .env files and set your environment variables:
+3. Create a .env file and set your environment variables:
 ```env
 # Required:
 GROQ_KEY="Your Groq API Key"
