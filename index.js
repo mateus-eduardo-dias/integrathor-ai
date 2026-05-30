@@ -126,7 +126,7 @@ function runSlashCommand(prompt) {
         console.log('/quit         ----- Exit the terminal')
         console.log('/clear        ----- Clear the context window')
         console.log('/context      ----- Show the context window')
-        console.log('/context size ----- Show the estimated size of the context window (tokens)')
+        console.log('/context size ----- Show the estimated size (tokens) of the context window')
     } else if (prompt == '/quit') {
         console.log("Quitting...")
         process.exit(0)
