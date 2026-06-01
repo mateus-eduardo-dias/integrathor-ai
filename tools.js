@@ -13,16 +13,16 @@ export default {
             return JSON.stringify({city: args.city, temperature: 22, unit: 'Celsius'})
         },
         get_rss: async function (args) {
-            const maxContext = args.context || 8000
+            const maxContext = args.context || 6000
             console.log(`RSS: Max tokens set to ${maxContext}`)
             rss_algorithm = args.algorithm
 
             if (rss_algorithm) {
                 console.log("RSS: Using TF-IDF")
-                rss_summarization = 10
+                rss_summarization = 50
             } else {
                 console.log("RSS: Using basic")
-                rss_summarization = 400
+                rss_summarization = 4000
             }
 
             if (!args.update) {
@@ -89,15 +89,15 @@ export default {
                     properties: {
                         algorithm: {
                             type: 'boolean',
-                            description: 'If true a variation of the TF-IDF algorithm is used to summarize the article content, if false only the first 400 words of each article will be sent.'
+                            description: 'Must be JSON boolean. If true a variation of the TF-IDF algorithm is used to summarize the article content, if false only the first 400 words of each article will be sent.'
                         },
                         update: {
                             type: 'boolean',
-                            description: "If true it will force a feed update, if false it will retrieve the newest feed from memory if possible (faster)."
+                            description: "Must be JSON boolean. If true it will force a feed update, if false it will retrieve the newest feed from memory if possible (faster)."
                         },
                         context: {
                             type: 'number',
-                            description: "A integer that defines the maximum amount of tokens that should be sent as response, default is 8000, value is ignored if update is false and feed is inside memory."
+                            description: "Must be JSON number. A integer that defines the maximum amount of tokens that should be sent as response, default is 8000."
                         }
                     },
                     required: ['algorithm', 'update']

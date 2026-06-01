@@ -7,7 +7,7 @@ dotenv.config()
 const groq = new Groq({apiKey: process.env.GROQ_KEY})
 const DEBUG_MODE = process.argv.includes('-d') || process.env.NODE_ENVIRONMENT == 'development'
 
-// Todo
+// Todo: Setup for custom_vars
 const custom_vars = {
     MAX_CTX: parseInt(process.env.MAX_CTX) || 4096
 }
@@ -19,7 +19,6 @@ const modelChoices = [
     "openai/gpt-oss-120b", "openai/gpt-oss-20b", new inquirer.Separator(),
     "llama-3.3-70b-versatile", "llama-3.1-8b-instant", new inquirer.Separator(),
     "qwen/qwen3-32b", new inquirer.Separator(), 
-    "meta-llama/llama-4-scout-17b-16e-instruct", new inquirer.Separator(),
     "groq/compound", "groq/compound-mini",
 ]
 
@@ -48,8 +47,11 @@ console.log(`Talking with: ${config.model}`)
 const messages_ctx = []
 const system_ctx = [{role: 'system', content: 'You are a helpfull assistant.'}]
 
+let model_usage
+
 do {
     try {
+        console.log()
         const prompt = await inquirer.prompt([{type: 'input', name: 'content', message: '> '}])
         console.log()
         if (prompt.content.charAt(0) == '/') {
@@ -72,11 +74,12 @@ async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
     let messages = isToolCall ? [...system_ctx, ...messages_ctx, ...ctx_tools] : [...system_ctx, ...messages_ctx, { role: "user", content: prompt }, ...ctx_tools]
     const chat = await groq.chat.completions.create({
         messages,
-        model: "openai/gpt-oss-20b",
+        model: config.model,
         tools: tools.config,
         tool_choice: 'auto',
         parallel_tool_calls: true
     })
+    model_usage = chat.usage
 
     const requiresToolCall = chat.choices[0]?.message?.tool_calls != null
 
@@ -100,7 +103,9 @@ async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
     }
 
     if (!requiresToolCall) {
-        console.log()
+        if (isToolCall) {
+            console.log()
+        }
         console.log(chat.choices[0]?.message?.content || "")
         messages_ctx.push({role: "assistant", content: chat.choices[0].message.content})
     } else {
@@ -121,26 +126,45 @@ async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
 }
 
 async function runSlashCommand(prompt) {
-    if (prompt == '/help') {
+    const prompt_divided = prompt.split(' ')
+    const command = prompt_divided[0]
+    const command_args = prompt_divided.slice(1)
+    if (command == '/help') {
         console.log("Commands:")
-        console.log('/quit         ----- Exit the terminal')
-        console.log('/clear        ----- Clear the context window')
-        console.log('/context      ----- Show the context window')
-        console.log('/context size ----- Show the estimated size (tokens) of the context window')
-        console.log("/rss          ----- Summarizes a RSS Feed")
-    } else if (prompt == '/quit') {
+        console.log('/quit                    ----- Exit the terminal')
+        console.log('/clear                   ----- Clear the context window')
+        console.log('/context                 ----- Show the context window')
+        console.log('/context size            ----- Show the estimated size (tokens) of the context window')
+        console.log("/rss <light|medium|full> ----- Summarizes a RSS Feed")
+    } else if (command == '/quit') {
         console.log("Quitting...")
         process.exit(0)
-    } else if (prompt == '/clear') {
+    } else if (command == '/clear') {
         messages_ctx.length = 0
-    } else if (prompt == '/context') {
-        console.log(messages_ctx)
-    } else if (prompt == '/context size') {
-        console.log(`Estimated tokens: ${estimateTokens(messages_ctx)}`)
-    } else if (prompt == '/rss') {
-        await runAI(`You are a senior journalist writing a morning briefing.
-        Write many paragraphs synthesizing all the news from the RSS feed.
-        No bullet points. No headers. Journalistic, concise tone.`)
+    } else if (command == '/context') {
+        if (command_args[0] == 'size') {
+            console.log(`Estimated tokens: ${estimateTokens(messages_ctx)}`)
+        } else {
+            console.log(messages_ctx)
+        }
+    } else if (command == '/rss') {
+        if (command_args[0] == 'light') {
+            await runAI(`You are a senior journalist writing a morning briefing.
+            Write many paragraphs synthesizing all the news from the RSS feed. Between 5-10 tight paragraphs.
+            No bullet points. No headers. Journalistic, concise tone. Set max rss to 4000.`)
+        } else if (command_args[0] == 'full') {
+            await runAI(`You are a senior journalist writing a morning briefing.
+            Write many paragraphs synthesizing all the news from the RSS feed. Between 5-10 tight paragraphs.
+            No bullet points. No headers. Journalistic, concise tone. Set max rss to 8000.`)
+        } else if (command_args[0] == 'medium' || command_args[0] == null) { // Medium
+            await runAI(`You are a senior journalist writing a morning briefing.
+            Write many paragraphs synthesizing all the news from the RSS feed. Between 5-10 10 tight paragraphs.
+            No bullet points. No headers. Journalistic, concise tone. Set max rss to default.`)
+        } else {
+            console.log(`Invalid size: ${command_args[0]}. Possible options: light, medium, full`)
+        }
+    } else if (command == '/usage') {
+        console.log(model_usage)
     } else {
         console.error("ERROR: Command not found")
     }
