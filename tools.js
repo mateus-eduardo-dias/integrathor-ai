@@ -1,29 +1,64 @@
 import Parser from "rss-parser"
 import { parse as parseHTML } from 'node-html-parser'
 import fs from 'fs'
-import { createHash } from "crypto"
 const parser = new Parser()
 
+const internalMemory = {}
 let rss_algorithm
+let rss_summarization
 
 export default {
     functions: {
         get_temperature: function (args) {
-            let parsed_args = JSON.parse(args)
-            return JSON.stringify({city: parsed_args.city, temperature: 22, unit: 'Celsius'})
+            return JSON.stringify({city: args.city, temperature: 22, unit: 'Celsius'})
         },
         get_rss: async function (args) {
-            let parsed_args = JSON.parse(args)
-            let parsed = await parser.parseURL("https://alistapart.com/main/feed/")
+            const maxContext = args.context || 8000
+            console.log(`RSS: Max tokens set to ${maxContext}`)
+            rss_algorithm = args.algorithm
+
+            if (rss_algorithm) {
+                console.log("RSS: Using TF-IDF")
+                rss_summarization = 10
+            } else {
+                console.log("RSS: Using basic")
+                rss_summarization = 400
+            }
+
+            if (!args.update) {
+                if (internalMemory.rss_feed != null) {
+                    console.log("RSS Found on memory")
+                    const compressed_feed_str = JSON.stringify(internalMemory.rss_feed)
+                    console.log(`RSS Estimated Token Count: ${compressed_feed_str.length / 4} (compressed)`)
+                    return compressed_feed_str
+                }
+                console.log("RSS: Fetching...")
+            } else {
+                console.log("RSS: Update forced")
+            }
+
+            const source = "https://alistapart.com/main/feed/"
+            const parsed_rss = await parser.parseURL(source)
             
-            
-            fs.writeFileSync('./test-uncompressed.json', JSON.stringify(parsed, null, 2))
-            console.log(parsed_args)
-            rss_algorithm = parsed_args.algorithm
-            let compressed = parsed.items.map(internalFunctions.cleanArticle)
-            fs.writeFileSync('./test-compressed.json', JSON.stringify(compressed, null, 2))
-            console.log(JSON.stringify(compressed).length / 4)
-            return JSON.stringify({information: 'no feed was found, come back after some hours', status: 404});
+
+            do {
+                const compressed_articles = parsed_rss.items.map(internalFunctions.cleanArticle)
+                const compressed_feed = {
+                    source: source,
+                    items: compressed_articles,
+                    algorithm: rss_algorithm
+                }
+                const compressed_feed_str = JSON.stringify(compressed_feed)
+                if (compressed_feed_str.length / 4 > maxContext) {
+                    const factor = (maxContext / (compressed_feed_str.length / 4)) * 0.95
+                    console.log(`RSS: Exceeded token limit (${compressed_feed_str.length / 4}), factor: ${factor}`)
+                    rss_summarization = Math.floor(rss_summarization * factor)
+                    continue;
+                }
+                internalMemory.rss_feed = compressed_feed
+                console.log(`RSS Estimated Token Count: ${compressed_feed_str.length / 4} (compressed)`)
+                return compressed_feed_str
+            } while (true)
         }
     },
     config: [
@@ -54,11 +89,15 @@ export default {
                     properties: {
                         algorithm: {
                             type: 'boolean',
-                            description: 'If true the TF-IDF algorithm is used, if false only the first 400 words of each article will be sent.'
+                            description: 'If true a variation of the TF-IDF algorithm is used to summarize the article content, if false only the first 400 words of each article will be sent.'
                         },
                         update: {
                             type: 'boolean',
-                            description: "If true it will force a update, if not it will retrieve the newest feed from memory"
+                            description: "If true it will force a feed update, if false it will retrieve the newest feed from memory if possible (faster)."
+                        },
+                        context: {
+                            type: 'number',
+                            description: "A integer that defines the maximum amount of tokens that should be sent as response, default is 8000, value is ignored if update is false and feed is inside memory."
                         }
                     },
                     required: ['algorithm', 'update']
@@ -78,17 +117,11 @@ const internalFunctions = {
         const text    = internalFunctions.stripHTML(raw);
 
         // Keep first 400 words — enough context for the model, not the whole article
-        const snippet = rss_algorithm ? internalFunctions.extractKeySentences(text, 20) : text.split(" ").slice(0, 400).join(" ");
-
-        // Fingerprint: SHA-256 of title + first 100 chars of snippet
-        // Same article polled tomorrow → same hash → skip it
-        const hash = createHash("sha256")
-        .update(item.title + snippet.slice(0, 100))
-        .digest("hex");
+        const snippet = rss_algorithm ? internalFunctions.extractKeySentences(text, rss_summarization) : text.split(" ").slice(0, rss_summarization).join(" ");
 
         return {
-            title:   item.title   ?? "(no title)",
-            link:    item.link    ?? "",
+            title:   item.title.replace(/\t|\n/g, '')   ?? "(no title)",
+            link:    item.link.replace(/\t|\n/g, '')    ?? "",
             snippet
         };
     },

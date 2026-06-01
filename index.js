@@ -46,14 +46,14 @@ try {
 console.log(`Talking with: ${config.model}`)
 
 const messages_ctx = []
-const system_ctx = [{role: 'system', content: 'You are a helpfull assistant. If the response requires more than one tool call, send all of them in one request.'}]
+const system_ctx = [{role: 'system', content: 'You are a helpfull assistant.'}]
 
 do {
     try {
         const prompt = await inquirer.prompt([{type: 'input', name: 'content', message: '> '}])
         console.log()
         if (prompt.content.charAt(0) == '/') {
-            runSlashCommand(prompt.content)
+            await runSlashCommand(prompt.content)
         } else {
             await runAI(prompt.content)
         }
@@ -111,7 +111,7 @@ async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
             if (!tools.hasContext[call.function.name]) {
                 saveCalls = false
             }
-            const returnValue = await tools.functions[call.function.name](call.function.arguments)
+            const returnValue = await tools.functions[call.function.name](JSON.parse(call.function.arguments))
             const tool_message = {role: 'tool', content: returnValue, tool_call_id: call.id}
             ctx_tools.push(tool_message)
         }
@@ -120,13 +120,14 @@ async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
     }
 }
 
-function runSlashCommand(prompt) {
+async function runSlashCommand(prompt) {
     if (prompt == '/help') {
         console.log("Commands:")
         console.log('/quit         ----- Exit the terminal')
         console.log('/clear        ----- Clear the context window')
         console.log('/context      ----- Show the context window')
         console.log('/context size ----- Show the estimated size (tokens) of the context window')
+        console.log("/rss          ----- Summarizes a RSS Feed")
     } else if (prompt == '/quit') {
         console.log("Quitting...")
         process.exit(0)
@@ -136,6 +137,10 @@ function runSlashCommand(prompt) {
         console.log(messages_ctx)
     } else if (prompt == '/context size') {
         console.log(`Estimated tokens: ${estimateTokens(messages_ctx)}`)
+    } else if (prompt == '/rss') {
+        await runAI(`You are a senior journalist writing a morning briefing.
+        Write many paragraphs synthesizing all the news from the RSS feed.
+        No bullet points. No headers. Journalistic, concise tone.`)
     } else {
         console.error("ERROR: Command not found")
     }
