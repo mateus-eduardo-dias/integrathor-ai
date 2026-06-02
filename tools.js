@@ -9,10 +9,9 @@ let rss_summarization
 
 export default {
     functions: {
-        get_rss: async function (args) {
-            const maxContext = args.context || 4000
-            console.log(`RSS: Max tokens set to ${maxContext}`)
-            rss_algorithm = args.algorithm
+        get_rss: async function ({algorithm, update=false, context=4000}) {
+            console.log(`RSS: Max tokens set to ${context}`)
+            rss_algorithm = algorithm
 
             if (rss_algorithm) {
                 console.log("RSS: Using TF-IDF")
@@ -22,7 +21,7 @@ export default {
                 rss_summarization = 4000
             }
 
-            if (!args.update) {
+            if (!update) {
                 if (internalMemory.rss_feed != null) {
                     console.log("RSS Found on memory")
                     const compressed_feed_str = JSON.stringify(internalMemory.rss_feed)
@@ -46,12 +45,13 @@ export default {
                     algorithm: rss_algorithm
                 }
                 const compressed_feed_str = JSON.stringify(compressed_feed)
-                if (compressed_feed_str.length / 4 > maxContext) {
-                    const factor = (maxContext / (compressed_feed_str.length / 4)) * 0.95
+                if (compressed_feed_str.length / 4 > context) {
+                    const factor = (context / (compressed_feed_str.length / 4)) * 0.95
                     console.log(`RSS: Exceeded token limit (${compressed_feed_str.length / 4}), factor: ${factor}`)
                     rss_summarization = Math.floor(rss_summarization * factor)
                     continue;
                 }
+                fs.writeFileSync('rss-compressed.json', JSON.stringify(compressed_feed, null, 2))
                 internalMemory.rss_feed = compressed_feed
                 console.log(`RSS Estimated Token Count: ${compressed_feed_str.length / 4} (compressed)`)
                 return compressed_feed_str
@@ -73,14 +73,14 @@ export default {
                         },
                         update: {
                             type: 'boolean',
-                            description: "Must be JSON boolean. If true it will force a feed update, if false it will retrieve the newest feed from memory if possible (faster)."
+                            description: "A boolean that defines if the RSS Feed should be updated. If false the feed will be retrieved from memory (default). If true the feed will be retrieved from the web."
                         },
                         context: {
                             type: 'number',
-                            description: "Must be JSON number. A integer that defines the maximum amount of tokens that should be sent as response, default is 4000."
+                            description: "A integer that defines the maximum amount of tokens that should be sent as response, default is 4000."
                         }
                     },
-                    required: ['algorithm', 'update']
+                    required: ['algorithm']
                 }
             }
         }

@@ -3,7 +3,4 @@ node_modules
 .ollama.js
 rss_test.js
 test.js
-.seen-hashes.json
-test-uncompressed.json
-test-compressed.json
-test-compressedB.json
+rss-compressed.json
