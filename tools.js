@@ -9,9 +9,6 @@ let rss_summarization
 
 export default {
     functions: {
-        get_temperature: function (args) {
-            return JSON.stringify({city: args.city, temperature: 22, unit: 'Celsius'})
-        },
         get_rss: async function (args) {
             const maxContext = args.context || 6000
             console.log(`RSS: Max tokens set to ${maxContext}`)
@@ -62,23 +59,6 @@ export default {
         }
     },
     config: [
-        {
-            type: 'function',
-            function: {
-                name: 'get_temperature',
-                description: 'Get the temperature of a certain city',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        city: {
-                            type: 'string',
-                            description: 'City name'
-                        },
-                    },
-                    required: ['city']
-                }
-            }
-        },
         {
             type: 'function',
             function: {
