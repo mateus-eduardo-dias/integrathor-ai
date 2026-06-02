@@ -10,7 +10,7 @@ let rss_summarization
 export default {
     functions: {
         get_rss: async function (args) {
-            const maxContext = args.context || 6000
+            const maxContext = args.context || 4000
             console.log(`RSS: Max tokens set to ${maxContext}`)
             rss_algorithm = args.algorithm
 
@@ -77,7 +77,7 @@ export default {
                         },
                         context: {
                             type: 'number',
-                            description: "Must be JSON number. A integer that defines the maximum amount of tokens that should be sent as response, default is 8000."
+                            description: "Must be JSON number. A integer that defines the maximum amount of tokens that should be sent as response, default is 4000."
                         }
                     },
                     required: ['algorithm', 'update']

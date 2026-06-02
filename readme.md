@@ -61,7 +61,7 @@ You can see all slash commands by typing `/help`.
 - `/clear`: Clear the context window
 - `/context`: Show the context window
     - `/context size`: Show the estimated size (tokens) of the context window
-- `/rss <light|medium|full>`: Summarizes a whole RSS feed.
-    - light: 4k tokens
+- `/rss <light|medium|full>`: Summarizes a whole RSS feed. The size defines how much data will be summarized (RSS Feed size).
+    - light: 4k tokens (default)
     - medium: 6k tokens
     - high: 9k tokens

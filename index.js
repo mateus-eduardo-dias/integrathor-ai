@@ -148,15 +148,15 @@ async function runSlashCommand(prompt) {
             console.log(messages_ctx)
         }
     } else if (command == '/rss') {
-        if (command_args[0] == 'light') {
+        if (command_args[0] == 'full') {
             await runAI(`You are a senior journalist writing a morning briefing.
             Write many paragraphs synthesizing all the news from the RSS feed. Between 5-10 tight paragraphs.
-            No bullet points. No headers. Journalistic, concise tone. Set max rss to 4000.`)
-        } else if (command_args[0] == 'full') {
+            No bullet points. No headers. Journalistic, concise tone. Set max rss to 9000.`)
+        } else if (command_args[0] == 'medium') {
             await runAI(`You are a senior journalist writing a morning briefing.
             Write many paragraphs synthesizing all the news from the RSS feed. Between 5-10 tight paragraphs.
-            No bullet points. No headers. Journalistic, concise tone. Set max rss to 8000.`)
-        } else if (command_args[0] == 'medium' || command_args[0] == null) { // Medium
+            No bullet points. No headers. Journalistic, concise tone. Set max rss to 6000.`)
+        } else if (command_args[0] == 'light' || command_args[0] == null) { // Medium
             await runAI(`You are a senior journalist writing a morning briefing.
             Write many paragraphs synthesizing all the news from the RSS feed. Between 5-10 10 tight paragraphs.
             No bullet points. No headers. Journalistic, concise tone. Set max rss to default.`)
