@@ -7,6 +7,7 @@ dotenv.config()
 const groq = new Groq({apiKey: process.env.GROQ_KEY})
 const DEBUG_MODE = process.argv.includes('-d') || process.env.NODE_ENVIRONMENT == 'development'
 
+// Todo: learn vector search
 // Todo: Setup for custom_vars
 const custom_vars = {
     MAX_CTX: parseInt(process.env.MAX_CTX) || 4096
@@ -18,8 +19,7 @@ DEBUG_MODE ? console.warn("WARNING: Debug Mode is active.") : console.log("Welco
 const modelChoices = [
     "openai/gpt-oss-120b", "openai/gpt-oss-20b", new inquirer.Separator(),
     "llama-3.3-70b-versatile", "llama-3.1-8b-instant", new inquirer.Separator(),
-    "qwen/qwen3-32b", new inquirer.Separator(), 
-    "groq/compound", "groq/compound-mini",
+    "qwen/qwen3-32b"
 ]
 
 let config
