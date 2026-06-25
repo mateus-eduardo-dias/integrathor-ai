@@ -18,7 +18,7 @@ DEBUG_MODE ? console.warn("WARNING: Debug Mode is active.") : console.log("Welco
 
 const modelChoices = [
     "openai/gpt-oss-120b", "openai/gpt-oss-20b", new inquirer.Separator(),
-    "llama-3.3-70b-versatile", "llama-3.1-8b-instant", new inquirer.Separator(),
+    "llama-3.3-70b-versatile", new inquirer.Separator(),
     "qwen/qwen3-32b"
 ]
 
