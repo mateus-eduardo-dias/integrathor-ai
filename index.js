@@ -3,6 +3,8 @@ import inquirer from "inquirer"
 import tools from "./tools.js"
 import configUtils from './utils/config.js'
 import auth from "./utils/auth.js"
+import screens from "./utils/ui.js"
+import definitions from "./utils/definitions.js"
 
 let config = configUtils.load()
 const credentials = auth.getAPIKeys(Array.isArray(config.connected) ? config.connected : [])
@@ -11,13 +13,24 @@ if (credentials.update === true) {
     config = configUtils.load()
 }
 
-const modelChoices = auth.getAvailableModels(config.connected)
+const modelChoices = definitions.getAvailableModels(config.connected)
 
+
+if (modelChoices.length == 0) {
+    console.log("No available models, authentication required.")
+    let newProvider = await screens.serviceAuth()
+    configUtils.addService(newProvider)
+    console.log("Updating config...")
+    config = configUtils.load()
+}
+
+const DEBUG_MODE = process.argv.includes('-d') || config.NODE_ENVIRONMENT == 'development'
+DEBUG_MODE ? console.warn("\nWARNING: Debug Mode is active.\n") : console.log("\nWelcome to your terminal\n")
 
 process.exit(0)
 
 const groq = new Groq({apiKey: config.GROQ_KEY}) // OS Keyring
-const DEBUG_MODE = process.argv.includes('-d') || config.NODE_ENVIRONMENT == 'development'
+
 
 // Todo: learn vector search
 // Todo: Setup for custom_vars
@@ -26,7 +39,7 @@ const custom_vars = {
 }
 
 console.log()
-DEBUG_MODE ? console.warn("WARNING: Debug Mode is active.") : console.log("Welcome to your terminal")
+
 
 
 

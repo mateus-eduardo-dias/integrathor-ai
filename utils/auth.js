@@ -1,16 +1,7 @@
 import { Entry } from "@napi-rs/keyring"
 import config from "./config.js"
 import inquirer from "inquirer"
-
-const supported_services = ["groq"]
-
-const models = {
-    groq: [
-        "groq/openai/gpt-oss-120b", "groq/openai/gpt-oss-20b",
-        "groq/llama-3.3-70b-versatile",
-        "groq/qwen/qwen3-32b"
-    ],
-}
+import definitions from "./definitions.js"
 
 export default {
     getAPIKeys: (services) => {
@@ -20,7 +11,7 @@ export default {
         }
         const credentials = {}
         for (let service of services) {
-            if (typeof service != 'string' || !supported_services.includes(service)) {
+            if (typeof service != 'string' || !definitions.getSupportedServices.includes(service)) {
                 console.error(`Invalid service: ${service}.`)
                 config.removeService(service)
                 credentials.update = true
@@ -43,16 +34,8 @@ export default {
         }
         return credentials
     },
-    getSupportedServices: supported_services,
-    getAvailableModels: (services) => {
-        const availableModels = []
-        for (let service of services) {
-            let serviceModels = models[service] || []
-            if (serviceModels.length != 0) {
-                availableModels.push(serviceModels)
-                availableModels.push(new inquirer.Separator())
-            }
-        }
-        return availableModels
+    setApiKey: ({provider, key}) => {
+        let entry = new Entry('integrathor-ai', provider)
+        entry.setPassword(key)
     }
 }
