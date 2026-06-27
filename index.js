@@ -1,36 +1,44 @@
 import Groq from "groq-sdk"
-import dotenv from 'dotenv'
 import inquirer from "inquirer"
 import tools from "./tools.js"
-dotenv.config()
+import configUtils from './utils/config.js'
+import auth from "./utils/auth.js"
 
-const groq = new Groq({apiKey: process.env.GROQ_KEY})
-const DEBUG_MODE = process.argv.includes('-d') || process.env.NODE_ENVIRONMENT == 'development'
+let config = configUtils.load()
+const credentials = auth.getAPIKeys(Array.isArray(config.connected) ? config.connected : [])
+if (credentials.update === true) {
+    console.log("Updating config...")
+    config = configUtils.load()
+}
+
+const modelChoices = auth.getAvailableModels(config.connected)
+
+
+process.exit(0)
+
+const groq = new Groq({apiKey: config.GROQ_KEY}) // OS Keyring
+const DEBUG_MODE = process.argv.includes('-d') || config.NODE_ENVIRONMENT == 'development'
 
 // Todo: learn vector search
 // Todo: Setup for custom_vars
 const custom_vars = {
-    MAX_CTX: parseInt(process.env.MAX_CTX) || 4096
+    MAX_CTX: parseInt(config.MAX_CTX) || 4096
 }
 
 console.log()
 DEBUG_MODE ? console.warn("WARNING: Debug Mode is active.") : console.log("Welcome to your terminal")
 
-const modelChoices = [
-    "openai/gpt-oss-120b", "openai/gpt-oss-20b", new inquirer.Separator(),
-    "llama-3.3-70b-versatile", new inquirer.Separator(),
-    "qwen/qwen3-32b"
-]
 
-let config
+
+let model_config
 try {
-    config = await inquirer.prompt([
+    model_config = await inquirer.prompt([
         {
             type: "rawlist",
             name: "model",
             message: "Choose a model:",
             choices: modelChoices,
-            default: "openai/gpt-oss-120b"
+            default: "groq/openai/gpt-oss-120b"
         }
     ])
 } catch (err) {
@@ -42,7 +50,7 @@ try {
     }
 }
 
-console.log(`Talking with: ${config.model}`)
+console.log(`Talking with: ${model_config.model}`)
 
 const messages_ctx = []
 const system_ctx = [{role: 'system', content: 'You are a helpfull assistant.'}]
@@ -74,7 +82,7 @@ async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
     let messages = isToolCall ? [...system_ctx, ...messages_ctx, ...ctx_tools] : [...system_ctx, ...messages_ctx, { role: "user", content: prompt }, ...ctx_tools]
     const chat = await groq.chat.completions.create({
         messages,
-        model: config.model,
+        model: model_config.model,
         tools: tools.config,
         tool_choice: 'auto',
         parallel_tool_calls: true
