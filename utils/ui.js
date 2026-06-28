@@ -3,14 +3,14 @@ import definitions from "./definitions.js"
 import inquirer from "inquirer"
 
 export default {
-    serviceAuth: async () => {
+    serviceAuth: async (allowExit=false) => {
         try {
             let configAuth = await inquirer.prompt([
                 {
                     type: "rawlist",
                     name: "provider",
                     message: "Choose a provider: ",
-                    choices: definitions.getSupportedServices,
+                    choices: allowExit ? [...definitions.getSupportedServices, 'exit'] : definitions.getSupportedServices,
                     default: definitions.getSupportedServices[0]
                 },
                 {
@@ -20,6 +20,10 @@ export default {
                     mask: true
                 }
             ])
+
+            if (configAuth.provider == 'exit') {
+                return false
+            }
 
             auth.setApiKey(configAuth)
             return configAuth.provider

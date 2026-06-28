@@ -65,3 +65,5 @@ You can see all slash commands by typing `/help`.
     - light: 4k tokens (default)
     - medium: 6k tokens
     - high: 9k tokens
+- `/connect`: Connect with a external AI provider
+    - `/connect list`: Show all connected providers

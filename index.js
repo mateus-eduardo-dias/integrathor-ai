@@ -51,7 +51,7 @@ console.log(`Talking with: ${model_config.model}`)
 
 let modelProvider = model_config.model.split('/')[0]
 let modelName = model_config.model.split('/').slice(1).join('/')
-const providersLoaded = {modelProvider: true}
+const providersLoaded = new Set([modelProvider])
 
 if (modelProvider == 'groq') {
     groqHandler.createClient(credentials.groq)
@@ -126,7 +126,26 @@ async function runSlashCommand(prompt) {
         } else {
             console.log(`Invalid size: ${command_args[0]}. Possible options: light, medium, full`)
         }
-    } else {
+    } else if (command == '/connect') {
+        if (command_args[0] == 'list') {
+            for (const provider of config.connected) {
+                console.log(provider)
+            }
+        } else if (command_args.length != 0) {
+            console.error("ERROR: Invalid argument")
+        } else {
+            let newProvider = await screens.serviceAuth()
+            if (newProvider === false) {
+                return;
+            }
+            configUtils.addService(newProvider)
+            console.log("Updating config...")
+            config = configUtils.load()
+            console.log("Reloading credentials...")
+            credentials = auth.getAPIKeys(Array.isArray(config.connected) ? config.connected : [])
+            console.log("Done!")
+        }
+    }  else {
         console.error("ERROR: Command not found")
     }
 }
