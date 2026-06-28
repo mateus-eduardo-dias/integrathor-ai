@@ -95,18 +95,18 @@ async function runSlashCommand(prompt) {
     if (command == '/help') {
         console.log("Commands:")
         console.log('/quit                    ----- Exit the terminal')
-        console.log('/clear                   ----- Clear the context window')
         console.log('/context                 ----- Show the context window')
         console.log('/context size            ----- Show the estimated size (tokens) of the context window')
+        console.log('/context clear           ----- Clear the context window')
         console.log("/rss <light|medium|full> ----- Summarizes a RSS Feed")
-    } else if (command == '/quit') {
+    } else if (command == '/quit' || command == '/exit') {
         console.log("Quitting...")
         process.exit(0)
-    } else if (command == '/clear') {
-        contextHandler.clearMessageContext()
     } else if (command == '/context') {
         if (command_args[0] == 'size') {
             console.log(`Estimated tokens: ${estimateTokens(contextHandler.getMessageContext())}`)
+        } else if (command_args[0] == 'clear') {
+            contextHandler.clearMessageContext()
         } else {
             console.log(contextHandler.getMessageContext())
         }
