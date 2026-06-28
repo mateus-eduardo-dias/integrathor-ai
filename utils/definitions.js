@@ -1,6 +1,6 @@
 import inquirer from "inquirer"
 
-const supported_services = ["groq", "gemini"]
+const supported_services = ["groq", "google"]
 
 const models = {
     groq: [
@@ -17,7 +17,7 @@ export default {
         for (let service of services) {
             let serviceModels = models[service] || []
             if (serviceModels.length != 0) {
-                availableModels.push(serviceModels)
+                availableModels.push(...serviceModels)
                 availableModels.push(new inquirer.Separator())
             }
         }

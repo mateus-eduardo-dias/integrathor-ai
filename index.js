@@ -1,13 +1,13 @@
-import Groq from "groq-sdk"
 import inquirer from "inquirer"
-import tools from "./tools.js"
 import configUtils from './utils/config.js'
 import auth from "./utils/auth.js"
 import screens from "./utils/ui.js"
 import definitions from "./utils/definitions.js"
+import groqHandler from "./providers/groq.js"
+import contextHandler from "./utils/context.js"
 
 let config = configUtils.load()
-const credentials = auth.getAPIKeys(Array.isArray(config.connected) ? config.connected : [])
+let credentials = auth.getAPIKeys(Array.isArray(config.connected) ? config.connected : [])
 if (credentials.update === true) {
     console.log("Updating config...")
     config = configUtils.load()
@@ -15,34 +15,16 @@ if (credentials.update === true) {
 
 const modelChoices = definitions.getAvailableModels(config.connected)
 
-
 if (modelChoices.length == 0) {
     console.log("No available models, authentication required.")
     let newProvider = await screens.serviceAuth()
     configUtils.addService(newProvider)
     console.log("Updating config...")
     config = configUtils.load()
-}
-
-const DEBUG_MODE = process.argv.includes('-d') || config.NODE_ENVIRONMENT == 'development'
-DEBUG_MODE ? console.warn("\nWARNING: Debug Mode is active.\n") : console.log("\nWelcome to your terminal\n")
-
-process.exit(0)
-
-const groq = new Groq({apiKey: config.GROQ_KEY}) // OS Keyring
-
-
-// Todo: learn vector search
-// Todo: Setup for custom_vars
-const custom_vars = {
-    MAX_CTX: parseInt(config.MAX_CTX) || 4096
+    credentials = auth.getAPIKeys(Array.isArray(config.connected) ? config.connected : [])
 }
 
 console.log()
-
-
-
-
 let model_config
 try {
     model_config = await inquirer.prompt([
@@ -51,7 +33,7 @@ try {
             name: "model",
             message: "Choose a model:",
             choices: modelChoices,
-            default: "groq/openai/gpt-oss-120b"
+            default: modelChoices[0]
         }
     ])
 } catch (err) {
@@ -63,12 +45,22 @@ try {
     }
 }
 
+const DEBUG_MODE = process.argv.includes('-d') || config.NODE_ENVIRONMENT == 'development'
+DEBUG_MODE ? console.warn("\nWARNING: Debug Mode is active.\n") : console.log("\nWelcome to your terminal\n")
 console.log(`Talking with: ${model_config.model}`)
 
-const messages_ctx = []
-const system_ctx = [{role: 'system', content: 'You are a helpfull assistant.'}]
+let modelProvider = model_config.model.split('/')[0]
+let modelName = model_config.model.split('/').slice(1).join('/')
+const providersLoaded = {modelProvider: true}
 
-let model_usage
+if (modelProvider == 'groq') {
+    groqHandler.createClient(credentials.groq)
+}
+
+// Todo: Setup for custom_vars
+const custom_vars = {
+    MAX_CTX: parseInt(config.MAX_CTX) || 4096
+}
 
 do {
     try {
@@ -91,58 +83,8 @@ do {
 } while (true)
 
 async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
-    const isToolCall = ctx_tools.length > 0
-    let messages = isToolCall ? [...system_ctx, ...messages_ctx, ...ctx_tools] : [...system_ctx, ...messages_ctx, { role: "user", content: prompt }, ...ctx_tools]
-    const chat = await groq.chat.completions.create({
-        messages,
-        model: model_config.model,
-        tools: tools.config,
-        tool_choice: 'auto',
-        parallel_tool_calls: true
-    })
-    model_usage = chat.usage
-
-    const requiresToolCall = chat.choices[0]?.message?.tool_calls != null
-
-    if (!isToolCall) {
-        messages_ctx.push({role: "user", content: prompt})
-    } else if (save_ctx_tools) {
-        messages_ctx.push(...ctx_tools)
-        ctx_tools.length = 0
-    }
-
-    if (!save_ctx_tools && !requiresToolCall) {
-        while (messages_ctx[messages_ctx.length - 1].role != 'user') {
-            messages_ctx.pop()
-        }
-        messages_ctx.pop()
-    }
-
-    if (DEBUG_MODE) {
-        console.log(chat.choices[0]?.message)
-        console.log(chat.choices[0]?.message?.tool_calls)
-    }
-
-    if (!requiresToolCall) {
-        if (isToolCall) {
-            console.log()
-        }
-        console.log(chat.choices[0]?.message?.content || "")
-        messages_ctx.push({role: "assistant", content: chat.choices[0].message.content})
-    } else {
-        ctx_tools.push({role: 'assistant', content: '', tool_calls: chat.choices[0].message.tool_calls})
-        let saveCalls = true
-        for (let call of chat.choices[0]?.message?.tool_calls) {
-            console.log(`Running: ${call.function.name}`)
-            if (!tools.hasContext[call.function.name]) {
-                saveCalls = false
-            }
-            const returnValue = await tools.functions[call.function.name](JSON.parse(call.function.arguments))
-            const tool_message = {role: 'tool', content: returnValue, tool_call_id: call.id}
-            ctx_tools.push(tool_message)
-        }
-
-        await runAI(prompt, ctx_tools, saveCalls)
+    if (modelProvider == 'groq') {
+        await groqHandler.ask(modelName, DEBUG_MODE, prompt, ctx_tools, save_ctx_tools)
     }
 }
 
@@ -161,12 +103,12 @@ async function runSlashCommand(prompt) {
         console.log("Quitting...")
         process.exit(0)
     } else if (command == '/clear') {
-        messages_ctx.length = 0
+        contextHandler.clearMessageContext()
     } else if (command == '/context') {
         if (command_args[0] == 'size') {
-            console.log(`Estimated tokens: ${estimateTokens(messages_ctx)}`)
+            console.log(`Estimated tokens: ${estimateTokens(contextHandler.getMessageContext())}`)
         } else {
-            console.log(messages_ctx)
+            console.log(contextHandler.getMessageContext())
         }
     } else if (command == '/rss') {
         if (command_args[0] == 'full') {
@@ -184,8 +126,6 @@ async function runSlashCommand(prompt) {
         } else {
             console.log(`Invalid size: ${command_args[0]}. Possible options: light, medium, full`)
         }
-    } else if (command == '/usage') {
-        console.log(model_usage)
     } else {
         console.error("ERROR: Command not found")
     }

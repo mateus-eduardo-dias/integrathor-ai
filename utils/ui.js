@@ -20,7 +20,7 @@ export default {
                     mask: true
                 }
             ])
-            
+
             auth.setApiKey(configAuth)
             return configAuth.provider
         }
