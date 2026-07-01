@@ -1,14 +1,14 @@
 class ContextHandler {
     constructor() {
         this.messages_ctx = [],
-        this.system_ctx = [{role: 'system', content: 'You are a helpfull assistant.'}]
+        this.system_ctx = {role: 'system', content: 'You are a helpfull assistant.'}
     }
     getMessageContext() {
         return this.messages_ctx
     }
-    addMessage(messages) {
-        this.messages_ctx.push(messages)
-    }
+    //addMessage(messages) {
+    //    this.messages_ctx.push(messages)
+    //}
     getLastMessage() {
         return this.messages_ctx[this.messages_ctx.length - 1]
     }
@@ -20,6 +20,14 @@ class ContextHandler {
     }
     getSystemContext() {
         return this.system_ctx
+    }
+
+
+    addUserMessage(text) {
+        this.messages_ctx.push({role: 'user', content: [{type: 'text', text}]})
+    }
+    addMessage(message) {
+        this.messages_ctx.push(message)
     }
 }
 

@@ -3,7 +3,7 @@ import configUtils from './utils/config.js'
 import auth from "./utils/auth.js"
 import screens from "./utils/ui.js"
 import definitions from "./utils/definitions.js"
-import groqHandler from "./providers/groq.js"
+import groqHandler from "./providers/groq-b.js"
 import contextHandler from "./utils/context.js"
 
 let config = configUtils.load()
@@ -84,7 +84,7 @@ do {
 
 async function runAI(prompt, ctx_tools=[], save_ctx_tools=true) {
     if (modelProvider == 'groq') {
-        await groqHandler.ask(modelName, DEBUG_MODE, prompt, ctx_tools, save_ctx_tools)
+        await groqHandler.ask(modelName, prompt, DEBUG_MODE)
     }
 }
 
